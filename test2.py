@@ -47,14 +47,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.json_data =None
         self.all_rels = dict()
         
-        btn_select_file = QtWidgets.QPushButton("Select Semantic Point Cloud")
+        btn_select_file = QtWidgets.QPushButton("Select Point Cloud")
         btn_select_file.clicked.connect(self.select_point_cloud_file)
         layout.addWidget(btn_select_file, 0, 1)
-        
-        #添加第二个点云选择按钮
-        btn_select_file3 = QtWidgets.QPushButton("Select Original Point Cloud")
-        btn_select_file3.clicked.connect(self.select_point_cloud_file2)
-        layout.addWidget(btn_select_file3, 0, 3)
         
         btn_select_file2 = QtWidgets.QPushButton("Save Anno && Close Point Cloud")
         btn_select_file2.clicked.connect(self.close_vis)
@@ -187,8 +182,6 @@ class MainWindow(QtWidgets.QMainWindow):
             self.file_path = os.path.dirname(file_path)
             self.load_json(os.path.join(self.file_path, "segments_anno.json"))
             self.load_pcd(file_path)
-    
-    def select_point_cloud_file2(self):
         file_path2, _ = QFileDialog.getOpenFileName(self, "Select Second Point File", "", "PLY Files (*.ply);;All Files (*)")
         if file_path2:
             self.load_pcd2(file_path2)
@@ -287,7 +280,7 @@ class MainWindow(QtWidgets.QMainWindow):
             print(self.window_id2)
             self.window2 = QtGui.QWindow.fromWinId(self.window_id2)
             self.windowcontainer2 = self.createWindowContainer(self.window2, self.centralWidget())
-            self.centralWidget().layout().addWidget(self.windowcontainer2, 1, 2, 2, 4)  # 将第二个视图添加到布局中
+            self.centralWidget().layout().addWidget(self.windowcontainer2, 1, 2, 2, 4)  
         else:
             print("can not get window_id2")
         self.vis2.add_geometry(self.pcd2)

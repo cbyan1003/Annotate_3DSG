@@ -45,6 +45,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.window_id = None
         self.window_id2 = None
         self.json_data =None
+        self.type_path = '/mnt/hdd/shenjunhao/ScanNet++v2/metadata/scene_types.json'
         self.all_rels = dict()
         
         btn_select_file = QtWidgets.QPushButton("Select Point Cloud")
@@ -133,7 +134,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.pxm_cb = QtWidgets.QComboBox()
         self.pxm_RelationshipDict = {'None': None, 'left': 15, 'right': 16, 'front': 17, 'behind': 18,
-                     'close by': 19, 'inside': 20}
+                     'close by': 19, 'inside': 20, 'around': 21, 'across from': 22}
         
         self.pxm_cb.addItems(self.pxm_RelationshipDict.keys())
         self.pxm_cb.setCurrentIndex(-1)
@@ -141,10 +142,10 @@ class MainWindow(QtWidgets.QMainWindow):
         layout.addWidget(self.pxm_cb, 6, 1, 1, 1)
         
         self.cmp_cb = QtWidgets.QComboBox()
-        self.cmp_RelationshipDict = {'None': None, 'bigger than': 21, 'smaller than': 22, 'higher than': 23, 'lower than': 24, 'same symmetry as': 25, 'same as': 26,
-                                     'same color': 27, 'same material': 28, 'same texture': 29, 'same shape': 30,
-                     'same state': 31, 'same object type': 32, 'messier than': 33, 'cleaner than': 34, 'fuller than': 35,
-                     'more closed': 36, 'more open': 37, 'brighter than': 38, 'darker than': 39, 'more comfortable than': 40, 'closer to': 41, 'futher from': 42}
+        self.cmp_RelationshipDict = {'None': None, 'bigger than': 23, 'smaller than': 24, 'higher than': 25, 'lower than': 26, 'same symmetry as': 27, 'same as': 28,
+                                     'same color': 29, 'same material': 30, 'same texture': 31, 'same shape': 32,
+                     'same state': 33, 'same object type': 34, 'messier than': 35, 'cleaner than': 36, 'fuller than': 37,
+                     'more closed': 38, 'more open': 39, 'brighter than': 40, 'darker than': 41, 'more comfortable than': 42, 'closer to': 43, 'futher from': 44}
         
         self.cmp_cb.addItems(self.cmp_RelationshipDict.keys())
         self.cmp_cb.setCurrentIndex(-1)
@@ -180,18 +181,27 @@ class MainWindow(QtWidgets.QMainWindow):
         file_path, _ = QFileDialog.getOpenFileName(self, "Select Point Cloud File", "", "PLY Files (*.ply);;All Files (*)")
         if file_path:
             self.file_path = os.path.dirname(file_path)
-            self.load_json(os.path.join(self.file_path, "segments_anno.json"))
+            #添加场景类型
+            scene_name = os.path.basename(os.path.dirname(os.path.dirname(file_path)))
+            self.load_json(os.path.join(self.file_path, "segments_anno.json"), self.type_path, scene_name)
             self.load_pcd(file_path)
         file_path2, _ = QFileDialog.getOpenFileName(self, "Select Second Point File", "", "PLY Files (*.ply);;All Files (*)")
         if file_path2:
             self.load_pcd2(file_path2)
     
-    def load_json(self, anno_file_path):
+    def load_json(self, anno_file_path, type_file_path, file_name):
         with open(anno_file_path, 'r', encoding='utf-8') as file:
             json_content = file.read()
         self.json_data = json.loads(json_content)
         sceneid = self.json_data["sceneId"]
         logging.info(f"SceneId:{sceneid}, Json loaded")
+        
+        with open(type_file_path, 'r', encoding='utf-8') as file2:
+            type_content = file2.read()
+        self.type_data = json.loads(type_content)
+        if file_name in self.type_data:
+            self.scenetype = self.type_data[file_name]
+        logging.info(f"SceneType:{self.scenetype}")
     
     def close_vis(self):
         if self.vis != None:
@@ -257,7 +267,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.vis.add_geometry(self.pcd)
         
         sceneid = self.json_data["sceneId"]
+        scenetype = self.scenetype
         self.all_rels['SceneId'] = sceneid
+        self.all_rels['SceneType'] = scenetype
         self.all_rels['sup_Rel'] = []
         self.all_rels['pxm_Rel'] = []
         self.all_rels['cmp_Rel'] = []
@@ -269,8 +281,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.txttimer.start(1000)
     
     def load_pcd2(self, file_path2):
-        self.pcd2 = o3d.io.read_point_cloud(file_path2)
-        print(f"Loaded second point cloud with {len(self.pcd2.points)} points.")
+#        self.pcd2 = o3d.io.read_point_cloud(file_path2)
+        self.pcd2 = o3d.io.read_triangle_mesh(file_path2)
+#        print(f"Loaded second point cloud with {len(self.pcd2.points)} points.")
         self.vis2 = o3d.visualization.VisualizerWithEditing()
         self.window_title2 = "Open3D - free view 2"
         self.vis2.create_window(window_name = self.window_title2, visible=True)
@@ -357,8 +370,6 @@ class MainWindow(QtWidgets.QMainWindow):
         pxm_relationship_text = self.pxm_cb.currentText()
         cmp_relationship_id = self.cmp_relationship_id_lineedit.text()
         cmp_relationship_text = self.cmp_cb.currentText()
-
-        sceneId = self.json_data["sceneId"]
         
         if  sup_relationship_text == 'None':
             sup_relationship_tuple = None
@@ -387,27 +398,31 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def write_to_json(self, all_rels):
         if len(self.all_rels['sup_Rel']) == 0 and len(self.all_rels['pxm_Rel']) == 0 and len(self.all_rels['cmp_Rel']) == 0:
-            logging.debug(f"Empty")
+            logging.debug("Empty")
         else:
-            logging.info(f"start write Relations")
-            #file_path = "/home/mint/annotate/anno.json"
+            logging.info("start write Relations")
             file_path = "/home/shenjunhao/Annotate_3DSG/anno.json"
-            try:
-                with open(file_path, 'r', encoding='utf-8') as file:
-                    data = json.load(file)
-            except (FileNotFoundError, json.JSONDecodeError):
-                data = []
-            
-            for rels in data:
-                if rels['SceneId'] == self.all_rels['SceneId']:
-                    data.remove(rels)
-                    break
-                
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                data = json.load(file)
+        except (FileNotFoundError, json.JSONDecodeError):
+            data = []
+        
+        # 查找是否已存在相同 SceneId 的条目，如果存在则更新，否则追加
+        for rels in data:
+            if rels['SceneId'] == self.all_rels['SceneId']:
+                # 将新的关系添加到原有的关系中
+                rels['sup_Rel'].extend(all_rels['sup_Rel'])
+                rels['pxm_Rel'].extend(all_rels['pxm_Rel'])
+                rels['cmp_Rel'].extend(all_rels['cmp_Rel'])
+                break
+        else:
+            # 如果没有找到相同 SceneId 的条目，则追加新条目
             data.append(all_rels)
-            
-            with open(file_path, 'w', encoding='utf-8') as file:
-                json.dump(data, file, indent=4)
-            logging.debug(f"write Relation: {all_rels}")
+        
+        with open(file_path, 'w', encoding='utf-8') as file:
+            json.dump(data, file, indent=4)
+        logging.debug(f"write Relation: {all_rels}")
     
     def closeEvent(self, event):
         self.vis.destroy_window()

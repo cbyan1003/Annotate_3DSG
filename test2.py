@@ -44,7 +44,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.vis2 = None
         self.window_id = None
         self.window_id2 = None
-        self.json_data =None
+        self.json_data = None
+        self.values = None
+        self.flag = False
+        self.scan_number = None
         self.type_path = '/mnt/hdd/shenjunhao/ScanNet++v2/metadata/scene_types.json'
         self.all_rels = dict()
         
@@ -134,7 +137,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.pxm_cb = QtWidgets.QComboBox()
         self.pxm_RelationshipDict = {'None': None, 'left': 15, 'right': 16, 'front': 17, 'behind': 18,
-                     'close by': 19, 'inside': 20, 'around': 21, 'across from': 22}
+                     'close by': 19, 'inside': 20, 'above': 21, 'below': 22, 'around': 23, 'across from': 24}
         
         self.pxm_cb.addItems(self.pxm_RelationshipDict.keys())
         self.pxm_cb.setCurrentIndex(-1)
@@ -142,7 +145,7 @@ class MainWindow(QtWidgets.QMainWindow):
         layout.addWidget(self.pxm_cb, 6, 1, 1, 1)
         
         self.cmp_cb = QtWidgets.QComboBox()
-        self.cmp_RelationshipDict = {'None': None, 'bigger than': 23, 'smaller than': 24, 'higher than': 25, 'lower than': 26, 'same symmetry as': 27, 'same as': 28,
+        self.cmp_RelationshipDict = {'None': None, 'bigger than': 25, 'smaller than': 26, 'same symmetry as': 27, 'same as': 28,
                                      'same color': 29, 'same material': 30, 'same texture': 31, 'same shape': 32,
                      'same state': 33, 'same object type': 34, 'messier than': 35, 'cleaner than': 36, 'fuller than': 37,
                      'more closed': 38, 'more open': 39, 'brighter than': 40, 'darker than': 41, 'more comfortable than': 42, 'closer to': 43, 'futher from': 44}
@@ -178,30 +181,51 @@ class MainWindow(QtWidgets.QMainWindow):
         self.label3.setText(f"已标注宾语: {count3}")
     
     def select_point_cloud_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Select Point Cloud File", "", "PLY Files (*.ply);;All Files (*)")
+        file_path, _ = QFileDialog.getOpenFileName(self, "Select Point Cloud File", "",
+                                                  "PLY Files (*.ply);;All Files (*)")
         if file_path:
             self.file_path = os.path.dirname(file_path)
-            #添加场景类型
+            self.file_path2 = file_path
+            scan_name = os.path.basename(file_path)
+            # 修改正则表达式以匹配 scanx_modified.ply 格式
+            if "scan" in scan_name.lower():
+                match = re.search(r'scan(\d+)_modified\.ply', scan_name.lower())
+                if match:
+                    self.scan_number = match.group(1)
+            # 添加场景类型
             scene_name = os.path.basename(os.path.dirname(os.path.dirname(file_path)))
-            self.load_json(os.path.join(self.file_path, "segments_anno.json"), self.type_path, scene_name)
+            self.load_json(os.path.join(self.file_path, "segments_anno.json"), self.type_path, scan_name,
+                                  scene_name)
             self.load_pcd(file_path)
-        file_path2, _ = QFileDialog.getOpenFileName(self, "Select Second Point File", "", "PLY Files (*.ply);;All Files (*)")
+
+        file_path2, _ = QFileDialog.getOpenFileName(self, "Select Second Point File", "",
+                                                   "PLY Files (*.ply);;All Files (*)")
         if file_path2:
             self.load_pcd2(file_path2)
     
-    def load_json(self, anno_file_path, type_file_path, file_name):
-        with open(anno_file_path, 'r', encoding='utf-8') as file:
-            json_content = file.read()
-        self.json_data = json.loads(json_content)
-        sceneid = self.json_data["sceneId"]
-        logging.info(f"SceneId:{sceneid}, Json loaded")
-        
-        with open(type_file_path, 'r', encoding='utf-8') as file2:
-            type_content = file2.read()
-        self.type_data = json.loads(type_content)
-        if file_name in self.type_data:
-            self.scenetype = self.type_data[file_name]
-        logging.info(f"SceneType:{self.scenetype}")
+    def load_json(self, anno_file_path, type_file_path, file_name1, file_name2):
+        try:
+            with open(anno_file_path, 'r', encoding='utf-8') as file:
+                json_content = file.read()
+            self.json_data = json.loads(json_content)
+            sceneid = self.json_data["sceneId"]
+            # 新增代码：根据提取的编号修改 SceneId
+            if self.scan_number:
+                sceneid = sceneid + '_' + self.scan_number
+                self.json_data["sceneId"] = sceneid
+            logging.info(f"SceneId:{sceneid}, Json loaded")
+
+            with open(type_file_path, 'r', encoding='utf-8') as file2:
+                type_content = file2.read()
+            self.type_data = json.loads(type_content)
+            if file_name2 in self.type_data:
+                self.scenetype = self.type_data[file_name2]
+            logging.info(f"SceneType:{self.scenetype}")
+            self.flag = "scan" in file_name1.lower()
+            return True
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            logging.error(f"Error loading JSON: {e}")
+            return False
     
     def close_vis(self):
         if self.vis != None:
@@ -255,7 +279,8 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.vis = o3d.visualization.VisualizerWithEditing()
         self.vis.create_window(visible=False)
-        
+        render_option = self.vis.get_render_option()
+        render_option.point_size = 2
         if self.window_id:
             self.window_id = int(self.window_id, 16) 
             print(self.window_id)
@@ -279,7 +304,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timer.timeout.connect(self.run)
         self.timer.start(10) 
         self.txttimer.start(1000)
-    
+        if self.flag == True:
+            with open(self.file_path2, 'r', encoding='utf-8') as file:
+                self.lines = file.readlines()
+            
     def load_pcd2(self, file_path2):
 #        self.pcd2 = o3d.io.read_point_cloud(file_path2)
         self.pcd2 = o3d.io.read_triangle_mesh(file_path2)
@@ -306,9 +334,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.vis.run()
         self.selected_points_list=self.vis.get_picked_points()
         if len(self.selected_points_list) != 0:
-            self.selected_points = str(self.selected_points_list[0])
-            logging.debug(f"selected_points:{self.selected_points}")
-
+            if self.flag == True:
+                self.selected_points = self.selected_points_list[0]
+                logging.debug(f"selected_points:{self.selected_points}")
+                self.index = self.selected_points + 16
+                value = self.lines[self.index]
+                self.values = str(int(float(value.split()[-1])))
+            else:
+                self.selected_points = str(self.selected_points_list[0])
+                logging.debug(f"selected_points:{self.selected_points}")
         
     def find_window(self, title):
         try:
@@ -323,11 +357,15 @@ class MainWindow(QtWidgets.QMainWindow):
         return None
         
     def show_selected_points1(self):
-        self.selected_points_lineedit1.setText(self.selected_points)
-        
+        if self.flag == True:
+            self.selected_points_lineedit1.setText(self.values)
+        else:
+            self.selected_points_lineedit1.setText(self.selected_points)
     def show_selected_points2(self):
-        self.selected_points_lineedit2.setText(self.selected_points)
-
+        if self.flag == True:
+            self.selected_points_lineedit2.setText(self.values)
+        else:
+            self.selected_points_lineedit2.setText(self.selected_points)
     def show_id_label1(self, value):
         lineedit_content = value
         point_id = lineedit_content

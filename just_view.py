@@ -13,14 +13,15 @@ from time import sleep
 from PyQt6.QtWidgets import QFileDialog, QApplication
 import logging
 
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.DEBUG)
+
+file_handler = RotatingFileHandler("app_view.log", maxBytes=1024*1024, backupCount=5)
 
 logging.basicConfig(
-    level=logging.DEBUG, 
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),  
-        logging.FileHandler("app_view.log") 
-    ]
+    handlers=[stream_handler, file_handler]
 )
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -130,6 +131,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.file_path = os.path.dirname(file_path)
             self.load_json(os.path.join(self.file_path, "segments_anno.json"))
             self.load_pcd(file_path)
+            scene_name = os.path.basename(os.path.dirname(os.path.dirname(file_path)))
+            logging.info(f"Open {scene_name}")
     
     def load_json(self, anno_file_path):
         with open(anno_file_path, 'r', encoding='utf-8') as file:

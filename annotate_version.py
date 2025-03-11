@@ -43,7 +43,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pcd = None
         self.pcd2 = None
         self.vis = None
-        self.vis2 = None
         self.window_id = None
         self.window_id2 = None
         self.json_data = None
@@ -281,8 +280,8 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.vis = o3d.visualization.VisualizerWithEditing()
         self.vis.create_window(visible=False)
-        render_option = self.vis.get_render_option()
-        render_option.point_size = 2
+        # render_option = self.vis.get_render_option()
+        # render_option.point_size = 2
         if self.window_id:
             self.window_id = int(self.window_id, 16) 
             logging.debug(self.window_id)

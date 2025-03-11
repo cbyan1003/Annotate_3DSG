@@ -19,7 +19,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),  
-        logging.FileHandler("app.log") 
+        logging.FileHandler("app_view.log") 
     ]
 )
 
@@ -46,7 +46,7 @@ class MainWindow(QtWidgets.QMainWindow):
         btn_select_file.clicked.connect(self.select_point_cloud_file)
         layout.addWidget(btn_select_file, 0, 0)
         
-        btn_select_file2 = QtWidgets.QPushButton("Save Anno && Close Point Cloud")
+        btn_select_file2 = QtWidgets.QPushButton("Close Point Cloud")
         btn_select_file2.clicked.connect(self.close_vis)
         layout.addWidget(btn_select_file2, 0, 1)
         
@@ -58,9 +58,9 @@ class MainWindow(QtWidgets.QMainWindow):
         btn2.clicked.connect(self.show_selected_points2)
         layout.addWidget(btn2, 5, 0)
 
-        btn3 = QtWidgets.QPushButton("Add a relationship")
-        btn3.clicked.connect(self.add_relationship)
-        layout.addWidget(btn3, 6, 3, 2, 1)
+        # btn3 = QtWidgets.QPushButton("Add a relationship")
+        # btn3.clicked.connect(self.add_relationship)
+        # layout.addWidget(btn3, 6, 3, 2, 1)
         
         # # 创建QLineEdit控件
         self.selected_points_lineedit1 = QtWidgets.QLineEdit()
@@ -77,11 +77,11 @@ class MainWindow(QtWidgets.QMainWindow):
         layout.addWidget(self.selected_points_lineedit2, 5, 1)
         layout.addWidget(self.selected_points_id_lineedit2, 5, 2)
         layout.addWidget(self.selected_points_label_lineedit2, 5, 3)
-        self.geo_relationship_id_lineedit = QtWidgets.QLineEdit()
-        layout.addWidget(self.geo_relationship_id_lineedit, 7, 0)
+        # self.geo_relationship_id_lineedit = QtWidgets.QLineEdit()
+        # layout.addWidget(self.geo_relationship_id_lineedit, 7, 0)
         
-        self.sem_relationship_id_lineedit = QtWidgets.QLineEdit()
-        layout.addWidget(self.sem_relationship_id_lineedit, 7, 1)
+        # self.sem_relationship_id_lineedit = QtWidgets.QLineEdit()
+        # layout.addWidget(self.sem_relationship_id_lineedit, 7, 1)
 
         # # 重定向标准输出
         # self.redirector = OutputRedirector(self.selected_points_lineedit1)
@@ -93,36 +93,36 @@ class MainWindow(QtWidgets.QMainWindow):
         self.selected_points_lineedit1.textChanged.connect(self.show_id_label1)
         self.selected_points_lineedit2.textChanged.connect(self.show_id_label2)
         
-        # # 构建QComboBox控件
-        self.geo_cb = QtWidgets.QComboBox()
-        self.geo_RelationshipDict = {'supported by': 1, 'left': 2, 'right': 3, 'front': 4, 'behind': 5,
-                     'close by': 6, 'inside': 7, 'bigger than': 8, 'smaller than': 9, 'higher than': 10,
-                     'lower than': 11, 'same symmetry as': 12, 'same as': 13, 'attached to': 14, 'standing on': 15,
-                     'lying on': 16, 'hanging on': 17, 'connected to': 18, 'leaning against': 19, 'part of': 20,
-                     'belonging to': 21, 'build in': 22, 'standing in': 23, 'cover': 24, 'lying in': 25,
-                     'hanging in': 26, 'same color': 27, 'same material': 28, 'same texture': 29, 'same shape': 30,
-                     'same state': 31, 'same object type': 32, 'messier than': 33, 'cleaner than': 34, 'fuller than': 35,
-                     'more closed': 36, 'more open': 37, 'brighter than': 38, 'darker than': 39, 'more comfortable than': 40}
+        # # # 构建QComboBox控件
+        # self.geo_cb = QtWidgets.QComboBox()
+        # self.geo_RelationshipDict = {'supported by': 1, 'left': 2, 'right': 3, 'front': 4, 'behind': 5,
+        #              'close by': 6, 'inside': 7, 'bigger than': 8, 'smaller than': 9, 'higher than': 10,
+        #              'lower than': 11, 'same symmetry as': 12, 'same as': 13, 'attached to': 14, 'standing on': 15,
+        #              'lying on': 16, 'hanging on': 17, 'connected to': 18, 'leaning against': 19, 'part of': 20,
+        #              'belonging to': 21, 'build in': 22, 'standing in': 23, 'cover': 24, 'lying in': 25,
+        #              'hanging in': 26, 'same color': 27, 'same material': 28, 'same texture': 29, 'same shape': 30,
+        #              'same state': 31, 'same object type': 32, 'messier than': 33, 'cleaner than': 34, 'fuller than': 35,
+        #              'more closed': 36, 'more open': 37, 'brighter than': 38, 'darker than': 39, 'more comfortable than': 40}
         
-        self.geo_cb.addItems(self.geo_RelationshipDict.keys())
-        self.geo_cb.setCurrentIndex(-1)
-        self.geo_cb.currentTextChanged.connect(self.geo_typeChanged)
-        layout.addWidget(self.geo_cb, 6, 0, 1, 1)
+        # self.geo_cb.addItems(self.geo_RelationshipDict.keys())
+        # self.geo_cb.setCurrentIndex(-1)
+        # self.geo_cb.currentTextChanged.connect(self.geo_typeChanged)
+        # layout.addWidget(self.geo_cb, 6, 0, 1, 1)
         
-        self.sem_cb = QtWidgets.QComboBox()
-        self.sem_RelationshipDict = {'supported by': 1, 'left': 2, 'right': 3, 'front': 4, 'behind': 5,
-                     'close by': 6, 'inside': 7, 'bigger than': 8, 'smaller than': 9, 'higher than': 10,
-                     'lower than': 11, 'same symmetry as': 12, 'same as': 13, 'attached to': 14, 'standing on': 15,
-                     'lying on': 16, 'hanging on': 17, 'connected to': 18, 'leaning against': 19, 'part of': 20,
-                     'belonging to': 21, 'build in': 22, 'standing in': 23, 'cover': 24, 'lying in': 25,
-                     'hanging in': 26, 'same color': 27, 'same material': 28, 'same texture': 29, 'same shape': 30,
-                     'same state': 31, 'same object type': 32, 'messier than': 33, 'cleaner than': 34, 'fuller than': 35,
-                     'more closed': 36, 'more open': 37, 'brighter than': 38, 'darker than': 39, 'more comfortable than': 40}
+        # self.sem_cb = QtWidgets.QComboBox()
+        # self.sem_RelationshipDict = {'supported by': 1, 'left': 2, 'right': 3, 'front': 4, 'behind': 5,
+        #              'close by': 6, 'inside': 7, 'bigger than': 8, 'smaller than': 9, 'higher than': 10,
+        #              'lower than': 11, 'same symmetry as': 12, 'same as': 13, 'attached to': 14, 'standing on': 15,
+        #              'lying on': 16, 'hanging on': 17, 'connected to': 18, 'leaning against': 19, 'part of': 20,
+        #              'belonging to': 21, 'build in': 22, 'standing in': 23, 'cover': 24, 'lying in': 25,
+        #              'hanging in': 26, 'same color': 27, 'same material': 28, 'same texture': 29, 'same shape': 30,
+        #              'same state': 31, 'same object type': 32, 'messier than': 33, 'cleaner than': 34, 'fuller than': 35,
+        #              'more closed': 36, 'more open': 37, 'brighter than': 38, 'darker than': 39, 'more comfortable than': 40}
         
-        self.sem_cb.addItems(self.sem_RelationshipDict.keys())
-        self.sem_cb.setCurrentIndex(-1)
-        self.sem_cb.currentTextChanged.connect(self.sem_typeChanged)
-        layout.addWidget(self.sem_cb, 6, 1, 1, 1)
+        # self.sem_cb.addItems(self.sem_RelationshipDict.keys())
+        # self.sem_cb.setCurrentIndex(-1)
+        # self.sem_cb.currentTextChanged.connect(self.sem_typeChanged)
+        # layout.addWidget(self.sem_cb, 6, 1, 1, 1)
 
     def select_point_cloud_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "Select Point Cloud File", "", "PLY Files (*.ply);;All Files (*)")
@@ -142,8 +142,8 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.vis != None:
             self.vis.destroy_window()
             self.timer.stop()
-            self.write_to_json(self.all_rels)
-            self.all_rels.clear()
+            # self.write_to_json(self.all_rels)
+            # self.all_rels.clear()
     
     def load_pcd(self, file_path):
         self.pcd = o3d.io.read_point_cloud(file_path)
@@ -276,7 +276,7 @@ class MainWindow(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     form = MainWindow()
-    form.setWindowTitle('Annotate relationships')
+    form.setWindowTitle('Just View')
     form.setGeometry(100, 100, 600, 500)
     form.show()
     logging.info("Application started")

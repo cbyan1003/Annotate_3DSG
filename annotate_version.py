@@ -13,21 +13,23 @@ from PyQt6.QtCore import QTimer,QThread, pyqtSlot
 from time import sleep
 from PyQt6.QtWidgets import QFileDialog, QApplication
 import logging
+from logging.handlers import RotatingFileHandler
 
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+
+file_handler = RotatingFileHandler("app.log", maxBytes=1024*1024, backupCount=5)
 
 logging.basicConfig(
-    level=logging.DEBUG, 
+    level=logging.DEBUG,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),  
-        logging.FileHandler("app.log") 
-    ]
+    handlers=[stream_handler, file_handler]
 )
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
-        logging.info("Initializing MainWindow")
+        logging.debug("Initializing MainWindow")
         self.selected_points_lineedit1 = None
         self.selected_points_lineedit2 = None
         widget = QtWidgets.QWidget()
@@ -37,7 +39,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.selected_points = str()
         
         self.file_path = None
-        self.file_path2 = None
+        self.file_path_full = None
         self.pcd = None
         self.pcd2 = None
         self.vis = None
@@ -185,23 +187,24 @@ class MainWindow(QtWidgets.QMainWindow):
                                                   "PLY Files (*.ply);;All Files (*)")
         if file_path:
             self.file_path = os.path.dirname(file_path)
-            self.file_path2 = file_path
+            self.file_path_full = file_path
             scan_name = os.path.basename(file_path)
-            # 修改正则表达式以匹配 scanx_modified.ply 格式
+            # 修改正则表达式以匹配 scanX_modified.ply 格式
             if "scan" in scan_name.lower():
                 match = re.search(r'scan(\d+)_modified\.ply', scan_name.lower())
                 if match:
                     self.scan_number = match.group(1)
             # 添加场景类型
             scene_name = os.path.basename(os.path.dirname(os.path.dirname(file_path)))
-            self.load_json(os.path.join(self.file_path, "segments_anno.json"), self.type_path, scan_name,
-                                  scene_name)
-            self.load_pcd(file_path)
+            
+            if "modified" in scan_name.lower() or "semantic" in scan_name.lower():
+                self.load_json(os.path.join(self.file_path, "segments_anno.json"), self.type_path, scan_name, scene_name)
+                self.load_pcd(file_path)
+                logging.info(f"Open {scene_name}")
+            else:
+                logging.error("Invalid file name")
 
-        file_path2, _ = QFileDialog.getOpenFileName(self, "Select Second Point File", "",
-                                                   "PLY Files (*.ply);;All Files (*)")
-        if file_path2:
-            self.load_pcd2(file_path2)
+
     
     def load_json(self, anno_file_path, type_file_path, file_name1, file_name2):
         try:
@@ -213,16 +216,18 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.scan_number:
                 sceneid = sceneid + '_' + self.scan_number
                 self.json_data["sceneId"] = sceneid
-            logging.info(f"SceneId:{sceneid}, Json loaded")
-
+            logging.debug(f"SceneId:{sceneid}, Json loaded")
+            
             with open(type_file_path, 'r', encoding='utf-8') as file2:
                 type_content = file2.read()
             self.type_data = json.loads(type_content)
             if file_name2 in self.type_data:
                 self.scenetype = self.type_data[file_name2]
             logging.info(f"SceneType:{self.scenetype}")
+            
             self.flag = "scan" in file_name1.lower()
             return True
+        
         except (FileNotFoundError, json.JSONDecodeError) as e:
             logging.error(f"Error loading JSON: {e}")
             return False
@@ -235,10 +240,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.write_to_json(self.all_rels)
             self.all_rels.clear()
             self.clear_all_button()
-        if self.vis2 != None:
-            self.vis2.destroy_window()
-            self.timer.stop()
-            self.txttimer.stop()
+            logging.info("Close Point Cloud")
             
     def clear_all_button(self):
         self.label.setText(f"已标注关系: 0")
@@ -270,7 +272,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
     def load_pcd(self, file_path):
         self.pcd = o3d.io.read_point_cloud(file_path)
-        print(f"Loaded point cloud with {len(self.pcd.points)} points.")
+        logging.debug(f"Loaded point cloud with {len(self.pcd.points)} points.")
         self.vis = o3d.visualization.VisualizerWithEditing()
         self.window_title = "Open3D - free view 1"
         self.vis.create_window(window_name = self.window_title, visible=True)
@@ -283,12 +285,12 @@ class MainWindow(QtWidgets.QMainWindow):
         render_option.point_size = 2
         if self.window_id:
             self.window_id = int(self.window_id, 16) 
-            print(self.window_id)
+            logging.debug(self.window_id)
             self.window = QtGui.QWindow.fromWinId(self.window_id)
             self.windowcontainer = self.createWindowContainer(self.window, self.centralWidget())
             self.centralWidget().layout().addWidget(self.windowcontainer, 1, 1, 2, 4)
         else:
-            print("can not get window_id")
+            logging.error("can not get window_id")
         self.vis.add_geometry(self.pcd)
         
         sceneid = self.json_data["sceneId"]
@@ -298,37 +300,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.all_rels['sup_Rel'] = []
         self.all_rels['pxm_Rel'] = []
         self.all_rels['cmp_Rel'] = []
-        logging.info(f"SceneId:{sceneid}, pcd loaded")
+        logging.debug(f"SceneId:{sceneid}, pcd loaded")
         
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.run)
         self.timer.start(10) 
         self.txttimer.start(1000)
         if self.flag == True:
-            with open(self.file_path2, 'r', encoding='utf-8') as file:
+            with open(self.file_path_full, 'r', encoding='utf-8') as file: #read point cloud file
                 self.lines = file.readlines()
-            
-    def load_pcd2(self, file_path2):
-#        self.pcd2 = o3d.io.read_point_cloud(file_path2)
-        self.pcd2 = o3d.io.read_triangle_mesh(file_path2)
-#        print(f"Loaded second point cloud with {len(self.pcd2.points)} points.")
-        self.vis2 = o3d.visualization.VisualizerWithEditing()
-        self.window_title2 = "Open3D - free view 2"
-        self.vis2.create_window(window_name = self.window_title2, visible=True)
-        self.window_id2 = self.find_window(self.window_title2)
-        if self.window_id2:
-            self.window_id2 = int(self.window_id2, 16)
-            print(self.window_id2)
-            self.window2 = QtGui.QWindow.fromWinId(self.window_id2)
-            self.windowcontainer2 = self.createWindowContainer(self.window2, self.centralWidget())
-            self.centralWidget().layout().addWidget(self.windowcontainer2, 1, 2, 2, 4)  
-        else:
-            print("can not get window_id2")
-        self.vis2.add_geometry(self.pcd2)
         
-        self.timer.timeout.connect(self.vis2.run)
-        self.timer.start(10)
-        self.txttimer.start(1000) 
         
     def run(self):
         self.vis.run()
@@ -336,13 +317,13 @@ class MainWindow(QtWidgets.QMainWindow):
         if len(self.selected_points_list) != 0:
             if self.flag == True:
                 self.selected_points = self.selected_points_list[0]
-                logging.debug(f"selected_points:{self.selected_points}")
+                logging.debug(f"modified scene, selected_points:{self.selected_points} from ply file")
                 self.index = self.selected_points + 16
                 value = self.lines[self.index]
                 self.values = str(int(float(value.split()[-1])))
             else:
                 self.selected_points = str(self.selected_points_list[0])
-                logging.debug(f"selected_points:{self.selected_points}")
+                logging.debug(f"selected_points:{self.selected_points} directly")
         
     def find_window(self, title):
         try:
@@ -436,42 +417,48 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def write_to_json(self, all_rels):
         if len(self.all_rels['sup_Rel']) == 0 and len(self.all_rels['pxm_Rel']) == 0 and len(self.all_rels['cmp_Rel']) == 0:
-            logging.debug("Empty")
+            logging.error("Empty")
         else:
-            logging.info("start write Relations")
-            file_path = "/home/shenjunhao/Annotate_3DSG/anno.json"
-        try:
-            with open(file_path, 'r', encoding='utf-8') as file:
-                data = json.load(file)
-        except (FileNotFoundError, json.JSONDecodeError):
-            data = []
-        
-        # 查找是否已存在相同 SceneId 的条目，如果存在则更新，否则追加
-        for rels in data:
-            if rels['SceneId'] == self.all_rels['SceneId']:
-                # 将新的关系添加到原有的关系中
-                rels['sup_Rel'].extend(all_rels['sup_Rel'])
-                rels['pxm_Rel'].extend(all_rels['pxm_Rel'])
-                rels['cmp_Rel'].extend(all_rels['cmp_Rel'])
-                break
-        else:
-            # 如果没有找到相同 SceneId 的条目，则追加新条目
-            data.append(all_rels)
-        
-        with open(file_path, 'w', encoding='utf-8') as file:
-            json.dump(data, file, indent=4)
-        logging.debug(f"write Relation: {all_rels}")
+            logging.debug("find Specific Anno Json")
+            # file_path = "/home/shenjunhao/Annotate_3DSG/anno.json"
+            if self.scan_number == None:
+                file_path = os.path.join(self.file_path, "scan1.json")
+            else:
+                file_path = os.path.join(self.file_path, f"scan{self.scan_number}.json")
+                
+            try:
+                logging.debug(f"open json: {file_path}")
+                with open(file_path, 'r', encoding='utf-8') as file:
+                    data = json.load(file)
+            except (FileNotFoundError, json.JSONDecodeError):
+                data = []
+            
+            # 查找是否已存在相同 SceneId 的条目，如果存在则更新，否则追加
+            for rels in data:
+                if rels['SceneId'] == self.all_rels['SceneId']:
+                    # 将新的关系添加到原有的关系中
+                    rels['sup_Rel'].extend(all_rels['sup_Rel'])
+                    rels['pxm_Rel'].extend(all_rels['pxm_Rel'])
+                    rels['cmp_Rel'].extend(all_rels['cmp_Rel'])
+                    break
+            else:
+                # 如果没有找到相同 SceneId 的条目，则追加新条目
+                data.append(all_rels)
+            
+            with open(file_path, 'w', encoding='utf-8') as file:
+                json.dump(data, file, indent=4)
+            logging.debug(f"write Relation: {all_rels}")
+        logging.info(f"write Relation finish")
     
     def closeEvent(self, event):
         self.vis.destroy_window()
-        self.vis2.destroy_window()
         event.accept()
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
     form = MainWindow()
-    form.setWindowTitle('Annotate relationships')
+    form.setWindowTitle('Annotate Relationships')
     form.setGeometry(100, 100, 800, 1000)
     form.show()
-    logging.info("Application started")
+    logging.debug("Application started")
     sys.exit(app.exec())

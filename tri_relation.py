@@ -117,7 +117,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # # 构建QComboBox控件
         self.sup_cb = QtWidgets.QComboBox()
-        self.sup_RelationshipDict = {'supported by': 1, 'attached to': 2, 'standing on': 3,
+        self.sup_RelationshipDict = {'None': None, 'supported by': 1, 'attached to': 2, 'standing on': 3,
                      'lying on': 4, 'hanging on': 5, 'connected to': 6, 'leaning against': 7, 'part of': 8,
                      'belonging to': 9, 'build in': 10, 'standing in': 11, 'cover': 12, 'lying in': 13,
                      'hanging in': 14}
@@ -128,7 +128,7 @@ class MainWindow(QtWidgets.QMainWindow):
         layout.addWidget(self.sup_cb, 6, 0, 1, 1)
         
         self.pxm_cb = QtWidgets.QComboBox()
-        self.pxm_RelationshipDict = {'left': 15, 'right': 16, 'front': 17, 'behind': 18,
+        self.pxm_RelationshipDict = {'None': None, 'left': 15, 'right': 16, 'front': 17, 'behind': 18,
                      'close by': 19, 'inside': 20}
         
         self.pxm_cb.addItems(self.pxm_RelationshipDict.keys())
@@ -137,7 +137,7 @@ class MainWindow(QtWidgets.QMainWindow):
         layout.addWidget(self.pxm_cb, 6, 1, 1, 1)
         
         self.cmp_cb = QtWidgets.QComboBox()
-        self.cmp_RelationshipDict = {'bigger than': 21, 'smaller than': 22, 'higher than': 23, 'lower than': 24, 'same symmetry as': 25, 'same as': 26,
+        self.cmp_RelationshipDict = {'None': None, 'bigger than': 21, 'smaller than': 22, 'higher than': 23, 'lower than': 24, 'same symmetry as': 25, 'same as': 26,
                                      'same color': 27, 'same material': 28, 'same texture': 29, 'same shape': 30,
                      'same state': 31, 'same object type': 32, 'messier than': 33, 'cleaner than': 34, 'fuller than': 35,
                      'more closed': 36, 'more open': 37, 'brighter than': 38, 'darker than': 39, 'more comfortable than': 40, 'closer to': 41, 'futher from': 42}
@@ -327,25 +327,38 @@ class MainWindow(QtWidgets.QMainWindow):
 
         sceneId = self.json_data["sceneId"]
         
-        sup_relationship_tuple = [int(instance1_id.strip().split(': ')[1]), int(instance2_id.strip().split(': ')[1]), int(sup_relationship_id.strip().split(': ')[1]), sup_relationship_text]
-        pxm_relationship_tuple = [int(instance1_id.strip().split(': ')[1]), int(instance2_id.strip().split(': ')[1]), int(pxm_relationship_id.strip().split(': ')[1]), pxm_relationship_text]
-        cmp_relationship_tuple = [int(instance1_id.strip().split(': ')[1]), int(instance2_id.strip().split(': ')[1]), int(cmp_relationship_id.strip().split(': ')[1]), cmp_relationship_text]
+        if  sup_relationship_text == 'None':
+            sup_relationship_tuple = None
+        else:    
+            sup_relationship_tuple = [int(instance1_id.strip().split(': ')[1]), int(instance2_id.strip().split(': ')[1]), int(sup_relationship_id.strip().split(': ')[1]), sup_relationship_text]
+        if  pxm_relationship_text == 'None':
+            pxm_relationship_tuple = None
+        else: 
+            pxm_relationship_tuple = [int(instance1_id.strip().split(': ')[1]), int(instance2_id.strip().split(': ')[1]), int(pxm_relationship_id.strip().split(': ')[1]), pxm_relationship_text]
+        if  cmp_relationship_text == 'None':
+            cmp_relationship_tuple = None
+        else: 
+            cmp_relationship_tuple = [int(instance1_id.strip().split(': ')[1]), int(instance2_id.strip().split(': ')[1]), int(cmp_relationship_id.strip().split(': ')[1]), cmp_relationship_text]
         
         if instance1_label != 'SPLIT' and instance2_label != 'SPLIT':
             self.add_rel(sup_relationship_tuple, pxm_relationship_tuple, cmp_relationship_tuple)
 
     def add_rel(self, sup_rel, pxm_rel, cmp_rel):
-        self.all_rels['sup_Rel'].append(sup_rel)
-        self.all_rels['pxm_Rel'].append(pxm_rel)
-        self.all_rels['cmp_Rel'].append(cmp_rel)
+        if sup_rel is not None:    
+            self.all_rels['sup_Rel'].append(sup_rel)
+        if pxm_rel is not None:
+            self.all_rels['pxm_Rel'].append(pxm_rel)
+        if cmp_rel is not None:
+            self.all_rels['cmp_Rel'].append(cmp_rel)
         logging.info(f"stack:{sup_rel}, {pxm_rel}, and {cmp_rel}")
     
     def write_to_json(self, all_rels):
-        if len(self.all_rels['sup_Rel']) == 0 or len(self.all_rels['pxm_Rel']) == 0 or len(self.all_rels['cmp_Rel']) == 0:
+        if len(self.all_rels['sup_Rel']) == 0 and len(self.all_rels['pxm_Rel']) == 0 and len(self.all_rels['cmp_Rel']) == 0:
             logging.debug(f"Empty")
         else:
             logging.info(f"start write Relations")
-            file_path = "/home/mint/annotate/anno.json"
+            #file_path = "/home/mint/annotate/anno.json"
+            file_path = "/home/shenjunhao/Annotate_3DSG/anno.json"
             try:
                 with open(file_path, 'r', encoding='utf-8') as file:
                     data = json.load(file)

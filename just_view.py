@@ -12,6 +12,7 @@ from PyQt6.QtCore import QTimer,QThread, pyqtSlot
 from time import sleep
 from PyQt6.QtWidgets import QFileDialog, QApplication
 import logging
+from logging.handlers import RotatingFileHandler
 
 stream_handler = logging.StreamHandler()
 stream_handler.setLevel(logging.DEBUG)

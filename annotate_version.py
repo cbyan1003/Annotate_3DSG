@@ -60,6 +60,14 @@ class MainWindow(QtWidgets.QMainWindow):
         btn_select_file2.clicked.connect(self.close_vis)
         layout.addWidget(btn_select_file2, 0, 2)
         
+        btn_select_file3 = QtWidgets.QPushButton("Only Save Anno")
+        btn_select_file3.clicked.connect(self.only_save)
+        layout.addWidget(btn_select_file3, 0, 3)
+        
+        btn_select_file4 = QtWidgets.QPushButton("Delete last relation")
+        btn_select_file4.clicked.connect(self.delete_last)
+        layout.addWidget(btn_select_file4, 0, 4)
+        
         self.label = QtWidgets.QLabel("已标注关系: 0", self)
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(self.label, 0, 0)
@@ -230,6 +238,29 @@ class MainWindow(QtWidgets.QMainWindow):
         except (FileNotFoundError, json.JSONDecodeError) as e:
             logging.error(f"Error loading JSON: {e}")
             return False
+    
+    def delete_last(self):
+        if self.all_rels['sup_Rel']:
+            sup_Rel_tub = self.all_rels['sup_Rel'].pop()
+            logging.info(f"Delete {sup_Rel_tub}")
+        if self.all_rels['pxm_Rel']:
+            pxm_Rel_tub = self.all_rels['pxm_Rel'].pop()
+            logging.info(f"Delete {pxm_Rel_tub}")
+        if self.all_rels['cmp_Rel']:
+            cmp_Rel_tub = self.all_rels['cmp_Rel'].pop()
+            logging.info(f"Delete {cmp_Rel_tub}")
+    
+    def only_save(self):
+        self.write_to_json(self.all_rels)
+        self.all_rels.clear()
+        self.clear_all_button()
+        sceneid = self.json_data["sceneId"]
+        scenetype = self.scenetype
+        self.all_rels['SceneId'] = sceneid
+        self.all_rels['SceneType'] = scenetype
+        self.all_rels['sup_Rel'] = []
+        self.all_rels['pxm_Rel'] = []
+        self.all_rels['cmp_Rel'] = []
     
     def close_vis(self):
         if self.vis != None:
@@ -415,7 +446,7 @@ class MainWindow(QtWidgets.QMainWindow):
         logging.info(f"stack:{sup_rel}, {pxm_rel}, and {cmp_rel}")
     
     def write_to_json(self, all_rels):
-        if len(self.all_rels['sup_Rel']) == 0 and len(self.all_rels['pxm_Rel']) == 0 and len(self.all_rels['cmp_Rel']) == 0:
+        if len(all_rels['sup_Rel']) == 0 and len(all_rels['pxm_Rel']) == 0 and len(all_rels['cmp_Rel']) == 0:
             logging.error("Empty")
         else:
             logging.debug("find Specific Anno Json")
@@ -434,7 +465,7 @@ class MainWindow(QtWidgets.QMainWindow):
             
             # 查找是否已存在相同 SceneId 的条目，如果存在则更新，否则追加
             for rels in data:
-                if rels['SceneId'] == self.all_rels['SceneId']:
+                if rels['SceneId'] == all_rels['SceneId']:
                     # 将新的关系添加到原有的关系中
                     rels['sup_Rel'].extend(all_rels['sup_Rel'])
                     rels['pxm_Rel'].extend(all_rels['pxm_Rel'])
